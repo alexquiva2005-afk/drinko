@@ -1,80 +1,83 @@
 <template>
   <div class="bingo-container">
-    <div class="bingo-wrapper">
-  <h1 class="titulo-dinamico">{{ nombreTematicaLocal }}</h1>
-      <p class="sala-sub">Sala: {{ props.codigoSala }}</p>
-
-      <div v-if="ele_actual === 'START'" class="sala-espera">
+    <div v-if="ele_actual === 'START'" class="capa-espera-total">
+      <div class="tarjeta-blanca-centrada"> 
         <div class="info-espera">
-          <h2>Esperando jugadores...</h2>
-          <p>Jugadores conectados: {{ totalJugadores }}</p>
+          <h2 class="titulo-espera">Esperando jugadores...</h2>
+          <div class="contador-jugadores">
+            <span class="numero-jugadores">{{ totalJugadores }}</span>
+            <p>conectados actualmente</p>
+          </div>
         </div>
-        <button @click="comenzarJuego" class="btn-comenzar">¡TODOS LISTOS!</button>
+        <button @click="comenzarJuego" class="btn-comenzar-pro">¡TODOS LISTOS!</button>
+        <p class="sala-id">Código de sala: <strong>{{ props.codigoSala }}</strong></p>
       </div>
+    </div>
 
-      <div v-else>
-
-        <div class="item-display">
-          <p class="item-nombre">{{ ele_actual }}</p>
-          <span class="votos-info">Votos: {{ votosRecibidos }} / {{ totalJugadores }}</span>
+    <div v-else class="capa-juego-total">
+      <div class="tarjeta-juego">
+        
+        <div class="header-juego">
+          <h1 class="titulo-dinamico">{{ nombreTematicaLocal }}</h1>  
+          <p class="sala-sub">SALA: <strong>{{ props.codigoSala }}</strong></p>
         </div>
 
-        <div class="grid-bingo">
+        <div class="item-display-pro">
+          <p class="item-nombre">{{ ele_actual }}</p>
+          <div class="progreso-votos">
+            Votos: {{ votosRecibidos }} / {{ totalJugadores }}
+          </div>
+        </div>
+
+        <div class="grid-bingo-pro">
           <div 
             v-for="(celda, index) in carton" 
             :key="index" 
-            :class="['celda', { marcada: celda.marcada }]"
+            :class="['celda-pro', { marcada: celda.marcada }]"
           >
             {{ celda.nombre || '?' }}
           </div>
         </div>
 
-        <div class="controles">
-          <button @click="registrarVoto('si')" :disabled="yaVotado" class="btn-hecho">SÍ</button>
-          <button @click="registrarVoto('no')" :disabled="yaVotado" class="btn-no">NO</button>
+        <div class="controles-pro">
+          <button @click="registrarVoto('si')" :disabled="yaVotado" class="btn-voto btn-si">SÍ</button>
+          <button @click="registrarVoto('no')" :disabled="yaVotado" class="btn-voto btn-no">NO</button>
         </div>
 
-        <div class="monitor-jugadores">
-          <p>¿Quién falta?</p>
-          <div v-for="jugador in listaJugadores" :key="jugador" 
-               :class="['tag-jugador', { 'ya-voto': hanVotado.includes(jugador) }]">
-            {{ jugador }} {{ hanVotado.includes(jugador) ? '✅' : '⏳' }}
+        <div class="monitor-votos">
+          <p class="txt-quien">¿Quién falta?</p>
+          <div class="lista-tags">
+            <div v-for="jugador in listaJugadores" :key="jugador" 
+                 :class="['tag-pro', { 'voto-listo': hanVotado.includes(jugador) }]">
+              {{ jugador }}
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div v-if="mostrarPopUpLinea && lineaCantadaPor" class="overlay-linea">
-      <div class="linea-card">
-        <button class="btn-cerrar-pop" @click="mostrarPopUpLinea = false">×</button>
-        <span class="emoji-linea">📢</span>
-        <h3>¡LÍNEA!</h3>
-        <p><strong>{{ lineaCantadaPor }}</strong> ha sido el más rápido.</p>
-      </div>
-    </div>
+<div v-if="mostrarPopUpLinea && lineaCantadaPor" class="overlay-linea">
+  <div class="linea-card">
+    <button class="btn-cerrar-modal-pro" @click="mostrarPopUpLinea = false">×</button>
+    <span class="emoji-linea">📢</span>
+    <h3>¡LÍNEA!</h3>
+    <p><strong>{{ lineaCantadaPor }}</strong> ha cantado línea.</p>
+  </div>
+</div>
 
-    <div v-if="alguienHaGanado" class="overlay-ganador">
-      <div class="ganador-card">
-        <span class="emoji-celebra">🏆</span>
-        <h2>¡BINGO!</h2>
-        <p>Felicidades, <strong>{{ nombreGanador }}</strong></p>
-        <hr />
-        <button @click="reiniciarTodo" class="btn-reiniciar">
-          🔄 Nueva Partida
-        </button>
-      </div>
-    </div>
-    <div v-if="mostrarPopUpLinea && lineaCantadaPor" class="overlay-linea">
-      <div class="linea-card">
-        <button class="btn-cerrar-pop" @click="mostrarPopUpLinea = false">×</button>
-        <span class="emoji-linea">📢</span>
-        <h3>¡LÍNEA!</h3>
-        <p><strong>{{ lineaCantadaPor }}</strong> ha cantado línea.</p>
-      </div>
-    </div>
+<div v-if="alguienHaGanado" class="overlay-ganador">
+  <div class="ganador-card">
+    <span class="emoji-celebra">🏆</span>
+    <h2 class="titulo-bingo-negro">¡BINGO!</h2>
+    <p><strong>{{ nombreGanador }}</strong> ha cantado bingo.</p>
+    <hr class="divisor-ganador" />
+    <button @click="reiniciarTodo" class="btn-reiniciar">
+      🔄 Nueva Partida
+    </button>
+  </div>
+</div>
   </div>
 </template>
-
 <script setup>
 import { ref, onMounted } from 'vue'
 import { supabase } from '../lib/supabaseClient'
@@ -272,26 +275,46 @@ const conectarRealtime = () => {
 }
 const comenzarJuego = async () => {
   try {
-    // 1. Buscamos elementos de la temática que tiene la partida actualmente
-// Antes tenías un .select() general, cámbialo por esto:
-const { data: elementos, error: errElem } = await supabase
-  .from('items') // Usamos 'items'
-  .select('nombre')
-  .eq('tematica_id', props.tematicaId); // Filtramos por la temática de la partida
+    // 1. OBTENER EL ID DE TEMÁTICA ACTUAL DE LA PARTIDA
+    // Esto asegura que si la sala cambió de tema, usemos el nuevo
+    const { data: partidaActual } = await supabase
+      .from('partidas')
+      .select('tematica_id')
+      .eq('codigo_sala', props.codigoSala)
+      .single();
+
+    const idAReferenciar = partidaActual?.tematica_id || props.tematicaId;
+
+    // 2. FILTRAR ÍTEMS POR ESE ID ESPECÍFICO
+    const { data: elementos, error: errElem } = await supabase
+      .from('items')
+      .select('nombre')
+      .eq('tematica_id', idAReferenciar); // <--- FILTRO CRÍTICO
+
     if (errElem || !elementos || elementos.length < 9) {
       console.error("Error o pocos elementos:", errElem);
-      return alert("Faltan elementos en esta temática");
+      return alert("Faltan elementos en esta temática (mínimo 9)");
     }
 
-    // 2. Limpiar votos y elegir primer ítem
+    // 3. Limpiar votos antiguos de la sala
     await supabase.from('votos').delete().eq('codigo_sala', props.codigoSala);
+    
+    // 4. Elegir el primer ítem al azar de la lista filtrada
     const azar = Math.floor(Math.random() * elementos.length);
     const primerItem = elementos[azar].nombre;
 
-    // 3. Actualizar la partida
+    // 5. Actualizar la partida en la DB
     await supabase.from('partidas')
-      .update({ item_actual_nombre: primerItem, ganador_nombre: null })
+      .update({ 
+        item_actual_nombre: primerItem, 
+        ganador_nombre: null,
+        linea_cantada_por: null 
+      })
       .eq('codigo_sala', props.codigoSala);
+
+    // Actualizamos los ítems disponibles locales para que el avance automático
+    // también use solo los de esta temática
+    itemsDisponibles.value = elementos;
 
   } catch (error) {
     console.error("Error en comenzarJuego:", error);
@@ -368,113 +391,500 @@ const actualizarListaYVotos = async () => {
 </script>
 
 <style scoped>
-.bingo-wrapper { padding: 10px; font-family: sans-serif; }
-.item-display { background: #eee; padding: 10px; margin: 10px 0; text-align: center; }
-
-/* Añadimos margen superior al grid para que bajen las celdas */
-.grid-bingo { 
-  display: grid; 
-  grid-template-columns: repeat(3, 1fr); 
-  gap: 8px; /* Un poco más de aire entre celdas */
-  max-width: 100%; 
-  margin: 30px auto; /* Aumentado de 10px a 30px para que bajen */
+/* 1. ESTRUCTURA Y CONTENEDORES */
+.bingo-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-/* Celdas más legibles en móvil */
-.celda { 
-  border: 2px solid #000; /* Borde negro más grueso, estilo moderno */
-  aspect-ratio: 1 / 1; /* Hacemos que sean perfectamente cuadradas */
-  height: auto; /* Quitamos el height fijo de 60px */
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
+.bingo-wrapper {
+  width: 100%;
+  max-width: 500px;
+  padding: 20px;
   text-align: center;
-  padding: 8px;
-  font-size: 0.75rem; /* Ajuste de fuente para nombres de bebidas */
-  font-weight: 800;
-  background: #fff;
-  text-transform: uppercase;
 }
 
-/* Cuando la celda está marcada, invertimos colores (estética Drinkgo) */
-.marcada { 
-  background: #000 !important; 
-  color: #fff !important; 
+/* 2. SALA DE ESPERA (CENTRE-CARD) */
+/* --- COPIA Y PEGA ESTO DENTRO DE <style scoped> --- */
+
+.capa-espera-total {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #212529; /* Fondo oscuro */
+  z-index: 9999;
+  margin: 0;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-/* Ajuste del título dentro del juego */
-.titulo-dinamico {
+.tarjeta-blanca-centrada {
+  background: #ffffff;
+  width: 100%;
+  max-width: 450px;
+  padding: 50px 40px;
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.titulo-espera {
   font-family: 'Inter', 'Impact', sans-serif;
-  font-weight: 900;
   font-size: 1.8rem;
+  font-weight: 900;
+  color: #000;
+  margin: 0;
+  letter-spacing: -1px;
   text-transform: uppercase;
-  margin-bottom: 5px;
 }
 
-.controles { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
-.btn-hecho { background: #22c55e; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-.btn-no { background: #ef4444; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-.btn-hecho:disabled, .btn-no:disabled { background: #ccc; cursor: not-allowed; }
-
-.monitor-jugadores { margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
-.tag-jugador { margin: 4px; padding: 4px 8px; border: 1px solid #ddd; border-radius: 20px; display: inline-block; font-size: 12px; background: white; }
-.ya-voto { background: #dcfce7; border-color: #22c55e; }
-
-/* Contenedor de espera: Blanco puro, sin bordes raros */
-.sala-espera { 
-  background: #ffffff; 
-  padding: 40px 20px; 
-  text-align: center; 
-  margin: 30px 0; 
+.contador-jugadores {
+  background: #f1f5f9;
+  padding: 20px;
+  border-radius: 20px;
+  margin: 10px 0;
 }
-/* Texto "Esperando jugadores..." en negro y negrita */
-.texto-espera {
+
+.numero-jugadores {
   font-family: 'Inter', 'Impact', sans-serif;
-  color: #000000; /* Negro puro */
+  font-size: 4.5rem;
+  font-weight: 900;
+  color: #000;
+  line-height: 1;
+  display: block;
+}
+
+.contador-jugadores p {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-top: 5px;
+}
+
+.btn-comenzar-pro {
+  width: 100%;
+  height: 65px;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.sala-id {
+  font-size: 0.9rem;
+  color: #9ca3af;
+  margin: 0;
+}
+.sala-espera-container {
+  position: fixed !important;
+  /* Centrado absoluto sin transform */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+  /* Esto asegura que el contenedor ocupe TODO el ancho real de la pantalla */
+  width: 100vw;
+  height: 100vh;
+  background-color: #212529; /* Fondo oscuro para ocultar lo de atrás */
+  z-index: 99999;
+  
+  /* Ajuste manual de seguridad */
+  /* Si tras poner esto lo sigues viendo a la derecha, 
+     pon un número positivo aquí (ej: 10px). 
+     Si lo ves a la izquierda, pon uno negativo (ej: -10px). */
+  padding-right: 0px; 
+}
+
+.login-card-bingo {
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  
+  /* Importante: el ancho de la tarjeta debe ser fijo o controlado */
+  width: 90%;
+  max-width: 400px;
+  margin: 0 auto; /* Refuerzo de centrado interno */
+}
+
+.titulo-espera {
+  color: #000;
+  font-family: 'Inter', 'Impact', sans-serif;
+  font-size: 1.8rem;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: -1px;
 }
-/* Botón "TODOS LISTOS": Negro sólido y rectangular */
-.btn-comenzar { 
-  width: 100%;
-  max-width: 280px;
-  background: #000000; 
-  color: #ffffff; 
-  border: none; 
-  padding: 20px; 
-  font-weight: 900; 
-  font-size: 1.2rem; 
-  cursor: pointer; 
+
+.info-jugadores {
+  background: #f1f5f9;
+  padding: 25px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.numero-grande {
+  font-family: 'Inter', 'Impact', sans-serif;
+  font-size: 5rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.texto-conectados {
+  font-size: 0.85rem;
+  font-weight: 800;
   text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 2px;
+  margin-top: 10px;
+}
+
+/* 3. GRID DE JUEGO */
+.grid-bingo {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 30px 0;
+}
+
+.celda {
+  background: #fff;
+  border: 2px solid #000;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.marcada {
+  background: #000 !important;
+  color: #fff !important;
+}
+
+/* 4. BOTONES Y CONTROLES */
+.btn-comenzar-bingo, .btn-reiniciar {
+  width: 100%;
+  height: 65px;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
   transition: transform 0.1s;
 }
-.btn-comenzar:active {
-  transform: scale(0.96);
+
+.controles {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
 }
-/* Estilos del Ganador */
-.overlay-ganador { 
-  position: fixed; 
-  top: 0; left: 0; width: 100%; height: 100%; 
-  background: rgba(0,0,0,0.85); 
-  display: flex; align-items: center; justify-content: center; 
-  z-index: 999; 
+
+.btn-hecho, .btn-no {
+  flex: 1;
+  height: 55px;
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
 }
-.ganador-card { 
-  background: white; padding: 30px; border-radius: 20px; 
-  text-align: center; box-shadow: 0 0 20px #ffd700; color: #333;
+
+.btn-hecho { background: #22c55e; }
+.btn-no { background: #ef4444; }
+
+.btn-comenzar-bingo:active, .btn-hecho:active, .btn-no:active {
+  transform: scale(0.97);
 }
-/* Contador de jugadores más sutil */
-.jugadores-count {
-  color: #000000;
-  font-weight: 600;
-  font-size: 0.9rem;
-  margin-bottom: 30px;
+
+/* 5. INTERFACES DE ESTADO (GANADOR / LÍNEA) */
+.overlay-ganador, .overlay-linea {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
 }
-.emoji-celebra { font-size: 50px; display: block; margin-bottom: 10px; }
-.btn-reiniciar { background: #000; color: #fff; padding: 12px 20px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin-top: 15px; }
-.aviso-linea-mini { background: #fef08a; padding: 5px; border-radius: 5px; margin-bottom: 5px; text-align: center; font-size: 12px; cursor: pointer; border: 1px solid #ca8a04; }
-.overlay-linea { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.linea-card { background: #fef08a; padding: 20px; border-radius: 15px; text-align: center; border: 3px solid #ca8a04; position: relative; color: #854d0e; }
-.btn-cerrar-pop { position: absolute; top: 5px; right: 10px; background: none; border: none; font-size: 20px; cursor: pointer; }
+
+.ganador-card, .linea-card {
+  background: #fff;
+  padding: 40px;
+  border-radius: 24px;
+  text-align: center;
+  max-width: 320px;
+}
+
+.linea-card {
+  background: #fef08a;
+  border: 4px solid #ca8a04;
+}
+
+.titulo-dinamico {
+  font-family: 'Inter', 'Impact', sans-serif;
+  font-weight: 900;
+  font-size: 2rem;
+  text-transform: uppercase;
+}
+
+/* 6. MONITOR DE JUGADORES */
+.monitor-jugadores {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.tag-jugador {
+  margin: 5px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.ya-voto {
+  background: #dcfce7;
+  border-color: #22c55e;
+  color: #166534;
+}
+
+/* Contenedor principal igual al de espera */
+.capa-juego-total {
+  min-height: 100vh;
+  width: 100vw;
+  background-color: #212529;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.tarjeta-juego {
+  background: #ffffff;
+  width: 100%;
+  max-width: 450px;
+  padding: 30px 25px;
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  text-align: center;
+}
+
+.titulo-dinamico {
+  font-family: 'Inter', 'Impact', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  margin: 0;
+  color: #000;
+}
+
+.sala-sub {
+  font-size: 0.8rem;
+  color: #6b7280;
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+}
+
+/* Panel de la frase/bebida actual */
+.item-display-pro {
+  background: #f8fafc;
+  padding: 15px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 20px;
+}
+
+.item-nombre {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #000;
+  margin: 0;
+}
+
+.progreso-votos {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-top: 5px;
+}
+
+/* Grid moderno */
+.grid-bingo-pro {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.celda-pro {
+  aspect-ratio: 1/1;
+  border: 2px solid #000;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+
+.celda-pro.marcada {
+  background: #000 !important;
+  color: #fff !important;
+}
+
+/* Botones de acción */
+.controles-pro {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 25px;
+}
+
+.btn-voto {
+  flex: 1;
+  height: 55px;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 900;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: #fff;
+  transition: transform 0.1s;
+}
+
+.btn-si { background: #22c55e; }
+.btn-no { background: #ef4444; }
+.btn-voto:disabled { background: #cbd5e1; cursor: not-allowed; }
+.btn-voto:active { transform: scale(0.95); }
+
+/* Monitor de gente */
+.monitor-votos {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 15px;
+}
+
+.txt-quien {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.lista-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.tag-pro {
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: #f1f5f9;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.tag-pro.voto-listo {
+  background: #dcfce7;
+  color: #16a34a;
+}
+/* Título de Bingo en negro */
+.titulo-bingo-negro {
+  color: #000000 !important;
+  font-family: 'Inter', 'Impact', sans-serif;
+  font-weight: 900;
+  font-size: 2.5rem;
+  margin: 10px 0;
+  text-transform: uppercase;
+}
+
+/* Botón de cerrar (la cruz) "Pro" */
+.btn-cerrar-modal-pro {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: #000; /* Fondo negro para que resalte */
+  color: #fff;      /* Cruz blanca */
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%; /* Forma circular */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  z-index: 10;
+  transition: transform 0.1s;
+}
+
+.btn-cerrar-modal-pro:active {
+  transform: scale(0.9);
+}
+
+/* Ajuste de la tarjeta de línea para que la cruz no tape el contenido */
+.linea-card {
+  position: relative;
+  background: #fef08a;
+  padding: 40px 20px 25px; /* Más padding arriba para la cruz */
+  border-radius: 24px;
+  text-align: center;
+  border: 4px solid #ca8a04;
+  min-width: 280px;
+}
+
+/* Separador más limpio para el ganador */
+.divisor-ganador {
+  border: none;
+  height: 1px;
+  background: #eee;
+  margin: 20px 0;
+}
 </style>
