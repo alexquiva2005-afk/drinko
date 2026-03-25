@@ -180,37 +180,50 @@ const comenzarJuego = async () => {
 }
 
 const reiniciarJuego = async () => {
-    try {
-      const { data: todas } = await supabase.from('tematicas').select('*')
-      const nuevoTema = todas[Math.floor(Math.random() * todas.length)]
+  try {
+    // 1. Buscamos todas las temáticas para elegir una DISTINTA a la actual si es posible
+    const { data: todas } = await supabase.from('tematicas').select('*')
+    if (!todas || todas.length === 0) return
 
-      await supabase.from('votos').delete().eq('codigo_sala', props.codigoSala)
+    // Opcional: Filtrar para que no salga la misma que ya estaba
+    const otrasTematicas = todas.filter(t => t.nombre !== nombreTematicaLocal.value)
+    const listaParaElegir = otrasTematicas.length > 0 ? otrasTematicas : todas
+    const nuevoTema = listaParaElegir[Math.floor(Math.random() * listaParaElegir.length)]
 
-      const { error } = await supabase
-        .from('partidas')
-        .update({ 
-          item_actual_nombre: 'START', 
-          ganador_nombre: null,
-          tematica_id: nuevoTema.id,
-          linea_cantada_por: null,
-          ultimo_reinicio: new Date().toISOString() 
-        })
-        .eq('codigo_sala', props.codigoSala);
+    // 2. Limpieza total de votos de la sala
+    await supabase.from('votos').delete().eq('codigo_sala', props.codigoSala)
 
-      if (error) throw error
+    // 3. Reset de la partida con el NUEVO ID de temática
+    const { error } = await supabase
+      .from('partidas')
+      .update({ 
+        item_actual_nombre: 'START', 
+        ganador_nombre: null,
+        tematica_id: nuevoTema.id, // <--- Aquí cambiamos el ID
+        linea_cantada_por: null,
+        ultimo_reinicio: new Date().toISOString() 
+      })
+      .eq('codigo_sala', props.codigoSala)
 
-      // Reset local inmediato
-      carton.value = Array(9).fill(null).map(() => ({ nombre: '', marcada: false }))
-      alguienHaGanado.value = false
-      nombreGanador.value = ''
-      lineaCantadaPor.value = null
-      yaVotado.value = false
-      nombreTematicaLocal.value = nuevoTema.nombre
-      
-    } catch (error) {
-      console.error("Error al reiniciar la partida:", error)
-    } 
+    if (error) throw error
+
+    // 4. Sincronización local inmediata
+    nombreTematicaLocal.value = nuevoTema.nombre
+    ele_actual.value = 'START'
+    carton.value = Array(9).fill(null).map(() => ({ nombre: '', marcada: false }))
+    yaVotado.value = false
+    alguienHaGanado.value = false
+    nombreGanador.value = ''
+    lineaCantadaPor.value = null
+    votosRecibidos.value = 0
+    hanVotado.value = []
+
+    console.log("Nueva temática seleccionada:", nuevoTema.nombre)
+
+  } catch (error) {
+    console.error("Error al reiniciar temática:", error)
   }
+}
 
   const conectarRealtime = () => {
     const canal = supabase.channel(`sala-${props.codigoSala}`, {
@@ -227,47 +240,32 @@ const reiniciarJuego = async () => {
         await actualizarListaYVotos(); 
       })
 
-      .on('postgres_changes', { 
+.on('postgres_changes', { 
         event: 'UPDATE', 
         schema: 'public', 
         table: 'partidas', 
         filter: `codigo_sala=eq.${props.codigoSala}` 
       }, async (payload) => {
-        const vieja = payload.old;
-        // Dentro de conectarRealtime -> .on('postgres_changes', event: 'UPDATE'...)
         const nueva = payload.new;
+        const vieja = payload.old;
 
-        // IMPORTANTE: Solo disparamos el popup si recibimos un nombre 
-        // y es DISTINTO al que ya tenemos (para que no salga mil veces)
-        if (nueva.linea_cantada_por && nueva.linea_cantada_por !== lineaCantadaPor.value) {
-        lineaCantadaPor.value = nueva.linea_cantada_por;
-        mostrarPopUpLinea.value = true; // <--- ESTO activa el v-if del popup
-        
-        // Se cierra solo a los 5 segundos
-        setTimeout(() => { 
-            mostrarPopUpLinea.value = false; 
-        }, 5000);
-        }
-
-        // Si en la DB se limpia la línea (reinicio), limpiamos local
-        if (!nueva.linea_cantada_por) {
-        lineaCantadaPor.value = null;
-        mostrarPopUpLinea.value = false;
-}
-
-        // 1. Lógica del Pop-up de Línea
+        // 1. LÓGICA DEL POP-UP DE LÍNEA (Limpia y sin duplicados)
         if (nueva.linea_cantada_por && nueva.linea_cantada_por !== lineaCantadaPor.value) {
           lineaCantadaPor.value = nueva.linea_cantada_por;
           mostrarPopUpLinea.value = true;
-          setTimeout(() => { mostrarPopUpLinea.value = false; }, 5000);
+          
+          setTimeout(() => { 
+            mostrarPopUpLinea.value = false; 
+          }, 5000);
         }
 
+        // Si se limpia la línea en la DB, limpiamos local
         if (!nueva.linea_cantada_por) {
           lineaCantadaPor.value = null;
           mostrarPopUpLinea.value = false;
         }
 
-        // 2. Reinicio Global (Detección por timestamp)
+        // 2. REINICIO GLOBAL (Detección por timestamp)
         if (nueva.ultimo_reinicio && nueva.ultimo_reinicio !== ultimoReinicioLocal.value) {
           ultimoReinicioLocal.value = nueva.ultimo_reinicio;
           carton.value = Array(9).fill(null).map(() => ({ nombre: '', marcada: false }));
@@ -275,15 +273,16 @@ const reiniciarJuego = async () => {
           alguienHaGanado.value = false;
           nombreGanador.value = '';
           votosRecibidos.value = 0;
+          hanVotado.value = [];
         }
 
-        // 3. Actualizar Temática si cambia
+        // 3. ACTUALIZAR TEMÁTICA
         if (nueva.tematica_id !== vieja?.tematica_id) {
           const { data } = await supabase.from('tematicas').select('nombre').eq('id', nueva.tematica_id).single();
           if (data) nombreTematicaLocal.value = data.nombre;
         }
 
-        // 4. Sincronización de estado de ronda
+        // 4. SINCRONIZACIÓN DE ESTADO
         ele_actual.value = nueva.item_actual_nombre;
         nombreGanador.value = nueva.ganador_nombre;
         alguienHaGanado.value = !!nueva.ganador_nombre;
