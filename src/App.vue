@@ -2,27 +2,36 @@
 import { ref, onMounted } from 'vue'
 import { supabase } from './lib/supabaseClient'
 import BingoCarton from './components/BingoCarton.vue'
+import { generarCodigoSala } from './utils/roomGenerator' //
 
 const estado = ref('registro')
 const nombreUsuario = ref('')
 const codigoSala = ref('')
+const codigoSugerido = ref('') // Nueva variable para el código aleatorio
 const tematicaId = ref(null)
-const nombreTematica = ref(null) // Lo iniciamos en null
+const nombreTematica = ref(null)
 
+onMounted(() => {
+  estado.value = 'registro'
+  codigoSugerido.value = generarCodigoSala() // Generamos uno al entrar
+})
 const entrarAPartida = async () => {
   if (!nombreUsuario.value || !codigoSala.value) return
+  
+  // Forzamos mayúsculas y quitamos espacios para evitar errores
   const salaLimpia = codigoSala.value.trim().toUpperCase()
   estado.value = 'cargando'
 
   try {
-    // 1. Buscamos la partida y su temática
+    // 1. Buscamos la partida
     let { data: partida } = await supabase
       .from('partidas')
       .select('*, tematicas(id, nombre)')
       .eq('codigo_sala', salaLimpia)
       .maybeSingle()
 
-    // 2. Si no existe, la creamos (con temática aleatoria)
+    // 2. Si no existe, la creamos con el código que el usuario ha escrito
+    // (pero ahora sabemos que será de 6 caracteres porque se lo pediremos)
     if (!partida) {
       const { data: todas } = await supabase.from('tematicas').select('*')
       const temaAleatorio = todas[Math.floor(Math.random() * todas.length)]
@@ -32,7 +41,8 @@ const entrarAPartida = async () => {
         .insert({ 
           codigo_sala: salaLimpia, 
           tematica_id: temaAleatorio.id,
-          item_actual_nombre: 'START' 
+          item_actual_nombre: 'START',
+          ultimo_reinicio: new Date().toISOString() // Añadimos esto para sincronizar
         })
         .select('*, tematicas(id, nombre)')
         .single()
@@ -41,15 +51,12 @@ const entrarAPartida = async () => {
       partida = nueva
     }
 
-    // 3. Guardamos los datos necesarios
+    // 3. Guardamos datos y entramos
     tematicaId.value = partida.tematica_id
     nombreTematica.value = partida.tematicas?.nombre || 'Bingo'
     codigoSala.value = salaLimpia
-
-    // 4. IMPORTANTE: Eliminamos el INSERT en la tabla 'jugadores'.
-    // Ahora usaremos "Presence" en el componente hijo, que es automático al cerrar pestaña.
-    
     estado.value = 'jugando'
+
   } catch (error) {
     console.error(error)
     alert("Error al conectar")
@@ -64,27 +71,41 @@ onMounted(() => {
 
 <template>
   <div id="app">
-<div v-if="estado === 'cargando'" class="pantalla-centrada">
-  <div class="login-card card-carga">
-    <div class="loader"></div>
-    <h2 class="titulo-drinkgo-mini">DRINKGO</h2>
-    <p class="subtexto-carga">Preparando la ronda...</p>
-    <div class="barra-progreso">
-      <div class="progreso-infinito"></div>
+    <div v-if="estado === 'cargando'" class="pantalla-centrada">
+      <div class="login-card card-carga">
+        <div class="loader"></div>
+        <h2 class="titulo-drinkgo-mini">DRINKGO</h2>
+        <p class="subtexto-carga">Preparando la ronda...</p>
+        <div class="barra-progreso">
+          <div class="progreso-infinito"></div>
+        </div>
+      </div>
     </div>
-  </div>
-    </div> <div v-else-if="estado === 'registro'" class="pantalla-centrada">
+
+    <div v-else-if="estado === 'registro'" class="pantalla-centrada">
       <div class="login-card">
         <div class="header-registro">
           <img src="/logo.jpg" alt="Logo" class="logo-registro" />
           <h1 class="titulo-drinkgo">DRINKGO</h1>
         </div>
         <p class="subtitulo-drinkgo">Ludopatía y alcoholismo</p>
-        <input v-model="nombreUsuario" placeholder="Nombre" />
-        <input v-model="codigoSala" placeholder="Código de sala" />
+        
+        <input v-model="nombreUsuario" placeholder="Nombre" maxlength="15" />
+        
+        <input 
+          v-model="codigoSala" 
+          placeholder="Código de sala" 
+          maxlength="6" 
+          @input="codigoSala = codigoSala.toUpperCase()" 
+        />
+        
         <button @click="entrarAPartida" :disabled="!nombreUsuario || !codigoSala">
           Entrar a jugar
         </button>
+
+        <p class="codigo-sugerido-texto" @click="usarCodigoSugerido" style="cursor: pointer;">
+          Tu código: <strong>{{ codigoSugerido }}</strong>
+        </p>
       </div>
     </div>
 
@@ -322,5 +343,22 @@ input::placeholder {
 @keyframes cargaDeslizar {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(250%); }
+}
+.codigo-sugerido-texto {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  color: #000; /* Texto negro */
+  text-align: center;
+  margin-top: -10px; /* Para que quede pegado al botón */
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.codigo-sugerido-texto strong {
+  font-family: monospace; /* Para diferenciar letras de números claramente */
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 1px;
 }
 </style>
